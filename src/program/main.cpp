@@ -6,6 +6,7 @@
 #include <pcl/console/parse.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/segmentation/supervoxel_clustering.h>
+#include <pcl/segmentation/lccp_segmentation.h>
 
 //VTK include needed for drawing graph lines
 #include <vtkPolyLine.h>
@@ -22,6 +23,7 @@ typedef pcl::PointNormal PointNT;
 typedef pcl::PointCloud<PointNT> PointNCloudT;
 typedef pcl::PointXYZL PointLT;
 typedef pcl::PointCloud<PointLT> PointLCloudT;
+typedef pcl::LCCPSegmentation<PointT>::SupervoxelAdjacencyList SuperVoxelAdjacencyList;
 
 cv::Mat color, depth;
 cv::Mat cameraMatrixColor;
@@ -135,7 +137,7 @@ addSupervoxelConnectionsToViewer (PointT &supervoxel_center,
     cells->InsertNextCell (polyLine);
     // Add the lines to the dataset
     polyData->SetLines (cells);
-    viewer->addModelFromPolyData (polyData,supervoxel_name);
+    //viewer->addModelFromPolyData (polyData,supervoxel_name);
 }
 
 int main(int argc, char **argv) {
@@ -179,16 +181,16 @@ int main(int argc, char **argv) {
     pcl::console::print_info ("Found %d supervoxels\n", supervoxel_clusters.size ());
 
     boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    viewer->setBackgroundColor (0, 0, 0);
+    //viewer->setBackgroundColor (0, 0, 0);
 
     PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud ();
-    viewer->addPointCloud (voxel_centroid_cloud, "voxel centroids");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,2.0, "voxel centroids");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.95, "voxel centroids");
+   // viewer->addPointCloud (voxel_centroid_cloud, "voxel centroids");
+    //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,2.0, "voxel centroids");
+    //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.95, "voxel centroids");
 
     PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud ();
-    viewer->addPointCloud (labeled_voxel_cloud, "labeled voxels");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.8, "labeled voxels");
+    //viewer->addPointCloud (labeled_voxel_cloud, "labeled voxels");
+    //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.8, "labeled voxels");
 
     PointNCloudT::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud (supervoxel_clusters);
     //We have this disabled so graph is easy to see, uncomment to see supervoxel normals
@@ -218,10 +220,40 @@ int main(int argc, char **argv) {
         std::stringstream ss;
         ss << "supervoxel_" << supervoxel_label;
         //This function is shown below, but is beyond the scope of this tutorial - basically it just generates a "star" polygon mesh from the points given
-        addSupervoxelConnectionsToViewer (supervoxel->centroid_, adjacent_supervoxel_centers, ss.str (), viewer);
+        //addSupervoxelConnectionsToViewer (supervoxel->centroid_, adjacent_supervoxel_centers, ss.str (), viewer);
         //Move iterator forward to next label
         label_itr = supervoxel_adjacency.upper_bound (supervoxel_label);
     }
+
+    // LCCPSegmentation Stuff
+    float concavity_tolerance_threshold = 10;
+    float smoothness_threshold = 0.1;
+    uint32_t min_segment_size = 0;
+    bool use_extended_convexity = false;
+    bool use_sanity_criterion = true;
+    unsigned int k_factor = 0; // or change to 1
+
+    PCL_INFO ("Starting Segmentation\n");
+    pcl::LCCPSegmentation<PointT> lccp;
+    lccp.setConcavityToleranceThreshold (concavity_tolerance_threshold);
+    lccp.setSanityCheck (use_sanity_criterion);
+    lccp.setSmoothnessCheck (true, voxel_resolution, seed_resolution, smoothness_threshold);
+    lccp.setKFactor (k_factor);
+    lccp.setInputSupervoxels (supervoxel_clusters, supervoxel_adjacency);
+    lccp.setMinSegmentSize (min_segment_size);
+    lccp.segment ();
+
+
+    PCL_INFO ("Interpolation voxel cloud -> input cloud and relabeling\n");
+    pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud ();
+    pcl::PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared ();
+    lccp.relabelCloud (*lccp_labeled_cloud);
+    SuperVoxelAdjacencyList sv_adjacency_list;
+    lccp.getSVAdjacencyList (sv_adjacency_list); // Needed for visualization
+
+    viewer->setBackgroundColor (0, 0, 0);
+    viewer->addPointCloud (lccp_labeled_cloud, "maincloud");
+
 
     while (!viewer->wasStopped ())
     {
