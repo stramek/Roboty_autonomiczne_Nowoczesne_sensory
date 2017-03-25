@@ -3,7 +3,6 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
-#include <pcl/visualization/cloud_viewer.h>
 #include <pcl/console/parse.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/segmentation/supervoxel_clustering.h>
@@ -154,15 +153,20 @@ int main(int argc, char **argv) {
 
     cameraMatrixColor = (Mat_<double>(3, 3) <<
                                             1 / FOCAL_LENGTH_X, 0, -OPTICAL_CENTER_X / FOCAL_LENGTH_X,
-                                            0, 1 / FOCAL_LENGTH_Y, -OPTICAL_CENTER_Y / FOCAL_LENGTH_Y,
-                                            0, 0, 1);
+            0, 1 / FOCAL_LENGTH_Y, -OPTICAL_CENTER_Y / FOCAL_LENGTH_Y,
+            0, 0, 1);
 
     createLookup(color.cols, color.rows);
 
     createCloud(depth, color, cloud);
     const std::string cloudName = "rendered";
 
-/*    pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
+    //////////////////////////////  //////////////////////////////
+    ////// This is how to use supervoxels
+    //////////////////////////////  //////////////////////////////
+
+    pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
+    super.setUseSingleCameraTransform (false);
     super.setInputCloud (cloud);
     super.setColorImportance (color_importance);
     super.setSpatialImportance (spatial_importance);
@@ -217,9 +221,14 @@ int main(int argc, char **argv) {
         addSupervoxelConnectionsToViewer (supervoxel->centroid_, adjacent_supervoxel_centers, ss.str (), viewer);
         //Move iterator forward to next label
         label_itr = supervoxel_adjacency.upper_bound (supervoxel_label);
-    }*/
+    }
 
-    visualizer->addPointCloud(cloud, cloudName);
+    while (!viewer->wasStopped ())
+    {
+        viewer->spinOnce (100);
+    }
+
+/*    visualizer->addPointCloud(cloud, cloudName);
     visualizer->setBackgroundColor(0, 0, 0);
     visualizer->setShowFPS(true);
     visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, cloudName);
@@ -229,11 +238,6 @@ int main(int argc, char **argv) {
     while (!visualizer->wasStopped()) {
         visualizer->spinOnce(100);
         boost::this_thread::sleep(boost::posix_time::microseconds(100000));
-    }
-
-/*    while (!viewer->wasStopped ())
-    {
-        viewer->spinOnce (100);
     }*/
 
     return 0;

@@ -4,6 +4,7 @@ project(Roboty_autonomiczne_Nowoczesne_sensory)
 
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
+#set(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 SET(CMAKE_BUILD_TYPE Debug)
@@ -12,7 +13,7 @@ SET(CMAKE_BUILD_TYPE Debug)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR})
 
 # PCL Library
-find_package(PCL REQUIRED)
+find_package(PCL 1.8 REQUIRED)
 INCLUDE_DIRECTORIES(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
