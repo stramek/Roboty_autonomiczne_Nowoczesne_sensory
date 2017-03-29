@@ -42,15 +42,17 @@ const Eigen::Matrix<double, 3, 3> PHCP_MODEL = [] {
     return matrix;
 }();
 
-float voxel_resolution = 0.008f;
+// use single camera transform
 
-float seed_resolution = 0.1f;
+float voxel_resolution = 0.0075f;
 
-float color_importance = 0.2f;
+float seed_resolution = 0.03f;
 
-float spatial_importance = 0.4f;
+float color_importance = 1.0f;
 
-float normal_importance = 1.0f;
+float spatial_importance = 1.0f;
+
+float normal_importance = 4.0f;
 
 
 void getPoint(unsigned int u, unsigned int v, float depth, Eigen::Vector3d &point3D) {
@@ -144,8 +146,6 @@ int main(int argc, char **argv) {
     color = imread("../images//rgb//0.png");
     depth = imread("../images//depth//0.png", CV_LOAD_IMAGE_ANYDEPTH);
 
-    pcl::visualization::PCLVisualizer::Ptr visualizer(new pcl::visualization::PCLVisualizer("Cloud Viewer"));
-
     pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud;
     cloud = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBA>());
     cloud->height = color.rows;
@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
     //////////////////////////////  //////////////////////////////
 
     pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
-    super.setUseSingleCameraTransform (false);
+    super.setUseSingleCameraTransform (true);
     super.setInputCloud (cloud);
     super.setColorImportance (color_importance);
     super.setSpatialImportance (spatial_importance);
@@ -181,20 +181,21 @@ int main(int argc, char **argv) {
     pcl::console::print_info ("Found %d supervoxels\n", supervoxel_clusters.size ());
 
     boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    //viewer->setBackgroundColor (0, 0, 0);
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> visualizer(new pcl::visualization::PCLVisualizer("Cloud Viewer"));
+    visualizer->setBackgroundColor (0, 0, 0);
 
     PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud ();
-   // viewer->addPointCloud (voxel_centroid_cloud, "voxel centroids");
-    //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,2.0, "voxel centroids");
-    //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.95, "voxel centroids");
+    visualizer->addPointCloud (voxel_centroid_cloud, "voxel centroids");
+    visualizer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,2.0, "voxel centroids");
+    visualizer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.95, "voxel centroids");
 
     PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud ();
-    //viewer->addPointCloud (labeled_voxel_cloud, "labeled voxels");
-    //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.8, "labeled voxels");
+    visualizer->addPointCloud (labeled_voxel_cloud, "labeled voxels");
+    visualizer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.8, "labeled voxels");
 
     PointNCloudT::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud (supervoxel_clusters);
     //We have this disabled so graph is easy to see, uncomment to see supervoxel normals
-    //viewer->addPointCloudNormals<PointNormal> (sv_normal_cloud,1,0.05f, "supervoxel_normals");
+    //visualizer->addPointCloudNormals<PointNormal> (sv_normal_cloud,1,0.05f, "supervoxel_normals");
 
     pcl::console::print_highlight ("Getting supervoxel adjacency\n");
     std::multimap<uint32_t, uint32_t> supervoxel_adjacency;
@@ -220,7 +221,7 @@ int main(int argc, char **argv) {
         std::stringstream ss;
         ss << "supervoxel_" << supervoxel_label;
         //This function is shown below, but is beyond the scope of this tutorial - basically it just generates a "star" polygon mesh from the points given
-        //addSupervoxelConnectionsToViewer (supervoxel->centroid_, adjacent_supervoxel_centers, ss.str (), viewer);
+        addSupervoxelConnectionsToViewer (supervoxel->centroid_, adjacent_supervoxel_centers, ss.str (), visualizer);
         //Move iterator forward to next label
         label_itr = supervoxel_adjacency.upper_bound (supervoxel_label);
     }
@@ -228,10 +229,18 @@ int main(int argc, char **argv) {
     // LCCPSegmentation Stuff
     float concavity_tolerance_threshold = 10;
     float smoothness_threshold = 0.1;
-    uint32_t min_segment_size = 0;
-    bool use_extended_convexity = false;
+    uint32_t min_segment_size = 5;
+    bool use_extended_convexity = true;
     bool use_sanity_criterion = true;
     unsigned int k_factor = 0; // or change to 1
+
+    pcl::console::parse (argc, argv, "-ctt", concavity_tolerance_threshold);
+    pcl::console::parse (argc, argv, "-st", smoothness_threshold);
+    pcl::console::parse (argc, argv, "-mss", min_segment_size);
+    pcl::console::parse (argc, argv, "-uec", use_extended_convexity);
+    pcl::console::parse (argc, argv, "-usc", use_sanity_criterion);
+    pcl::console::parse (argc, argv, "-kf", k_factor);
+    cout << "smoothness_threshold: "<<smoothness_threshold<<endl;
 
     PCL_INFO ("Starting Segmentation\n");
     pcl::LCCPSegmentation<PointT> lccp;
@@ -255,9 +264,10 @@ int main(int argc, char **argv) {
     viewer->addPointCloud (lccp_labeled_cloud, "maincloud");
 
 
-    while (!viewer->wasStopped ())
+    while (!viewer->wasStopped () || !visualizer->wasStopped ())
     {
         viewer->spinOnce (100);
+        visualizer->spinOnce (100);
     }
 
 /*    visualizer->addPointCloud(cloud, cloudName);
