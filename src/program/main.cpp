@@ -24,6 +24,7 @@ typedef pcl::PointCloud<PointNT> PointNCloudT;
 typedef pcl::PointXYZL PointLT;
 typedef pcl::PointCloud<PointLT> PointLCloudT;
 typedef pcl::LCCPSegmentation<PointT>::SupervoxelAdjacencyList SuperVoxelAdjacencyList;
+typedef boost::graph_traits<SuperVoxelAdjacencyList>::vertex_iterator VertexIterator;
 
 cv::Mat color, depth;
 cv::Mat cameraMatrixColor;
@@ -92,7 +93,7 @@ void createCloud(const cv::Mat &depth, const cv::Mat &color, pcl::PointCloud<pcl
         const float *itX = lookupX.ptr<float>();
 
         for (size_t c = 0; c < (size_t) depth.cols; ++c, ++itP, ++itD, ++itC, ++itX) {
-            register const float depthValue = *itD /5000.0f;
+            register const float depthValue = *itD / 5000.0f;
             getPoint(c, r, depthValue, point);
             // Check for invalid measurements
             if (*itD == 0) {
@@ -113,32 +114,30 @@ void createCloud(const cv::Mat &depth, const cv::Mat &color, pcl::PointCloud<pcl
 }
 
 void
-addSupervoxelConnectionsToViewer (PointT &supervoxel_center,
-                                  PointCloudT &adjacent_supervoxel_centers,
-                                  std::string supervoxel_name,
-                                  boost::shared_ptr<pcl::visualization::PCLVisualizer> & viewer)
-{
-    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New ();
-    vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New ();
-    vtkSmartPointer<vtkPolyLine> polyLine = vtkSmartPointer<vtkPolyLine>::New ();
+addSupervoxelConnectionsToViewer(PointT &supervoxel_center,
+                                 PointCloudT &adjacent_supervoxel_centers,
+                                 std::string supervoxel_name,
+                                 boost::shared_ptr<pcl::visualization::PCLVisualizer> &viewer) {
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
+    vtkSmartPointer<vtkPolyLine> polyLine = vtkSmartPointer<vtkPolyLine>::New();
 
     //Iterate through all adjacent points, and add a center point to adjacent point pair
-    PointCloudT::iterator adjacent_itr = adjacent_supervoxel_centers.begin ();
-    for ( ; adjacent_itr != adjacent_supervoxel_centers.end (); ++adjacent_itr)
-    {
-        points->InsertNextPoint (supervoxel_center.data);
-        points->InsertNextPoint (adjacent_itr->data);
+    PointCloudT::iterator adjacent_itr = adjacent_supervoxel_centers.begin();
+    for (; adjacent_itr != adjacent_supervoxel_centers.end(); ++adjacent_itr) {
+        points->InsertNextPoint(supervoxel_center.data);
+        points->InsertNextPoint(adjacent_itr->data);
     }
     // Create a polydata to store everything in
-    vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New ();
+    vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
     // Add the points to the dataset
-    polyData->SetPoints (points);
-    polyLine->GetPointIds  ()->SetNumberOfIds(points->GetNumberOfPoints ());
-    for(unsigned int i = 0; i < points->GetNumberOfPoints (); i++)
-        polyLine->GetPointIds ()->SetId (i,i);
-    cells->InsertNextCell (polyLine);
+    polyData->SetPoints(points);
+    polyLine->GetPointIds()->SetNumberOfIds(points->GetNumberOfPoints());
+    for (unsigned int i = 0; i < points->GetNumberOfPoints(); i++)
+        polyLine->GetPointIds()->SetId(i, i);
+    cells->InsertNextCell(polyLine);
     // Add the lines to the dataset
-    polyData->SetLines (cells);
+    polyData->SetLines(cells);
     //viewer->addModelFromPolyData (polyData,supervoxel_name);
 }
 
@@ -167,63 +166,63 @@ int main(int argc, char **argv) {
     ////// This is how to use supervoxels
     //////////////////////////////  //////////////////////////////
 
-    pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
-    super.setUseSingleCameraTransform (true);
-    super.setInputCloud (cloud);
-    super.setColorImportance (color_importance);
-    super.setSpatialImportance (spatial_importance);
-    super.setNormalImportance (normal_importance);
+    pcl::SupervoxelClustering<PointT> super(voxel_resolution, seed_resolution);
+    super.setUseSingleCameraTransform(true);
+    super.setInputCloud(cloud);
+    super.setColorImportance(color_importance);
+    super.setSpatialImportance(spatial_importance);
+    super.setNormalImportance(normal_importance);
 
-    std::map <uint32_t, pcl::Supervoxel<PointT>::Ptr > supervoxel_clusters;
+    std::map<uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxel_clusters;
 
-    pcl::console::print_highlight ("Extracting supervoxels!\n");
-    super.extract (supervoxel_clusters);
-    pcl::console::print_info ("Found %d supervoxels\n", supervoxel_clusters.size ());
+    pcl::console::print_highlight("Extracting supervoxels!\n");
+    super.extract(supervoxel_clusters);
+    pcl::console::print_info("Found %d supervoxels\n", supervoxel_clusters.size());
 
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> visualizer(new pcl::visualization::PCLVisualizer("Cloud Viewer"));
-    visualizer->setBackgroundColor (0, 0, 0);
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> visualizer(
+            new pcl::visualization::PCLVisualizer("Cloud Viewer"));
+    visualizer->setBackgroundColor(0, 0, 0);
 
-    PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud ();
-    visualizer->addPointCloud (voxel_centroid_cloud, "voxel centroids");
-    visualizer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,2.0, "voxel centroids");
-    visualizer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.95, "voxel centroids");
+    PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud();
+    visualizer->addPointCloud(voxel_centroid_cloud, "voxel centroids");
+    visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2.0, "voxel centroids");
+    visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.95, "voxel centroids");
 
-    PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud ();
-    visualizer->addPointCloud (labeled_voxel_cloud, "labeled voxels");
-    visualizer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_OPACITY,0.8, "labeled voxels");
+    PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud();
+    visualizer->addPointCloud(labeled_voxel_cloud, "labeled voxels");
+    visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.8, "labeled voxels");
 
-    PointNCloudT::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud (supervoxel_clusters);
+    PointNCloudT::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud(supervoxel_clusters);
     //We have this disabled so graph is easy to see, uncomment to see supervoxel normals
     //visualizer->addPointCloudNormals<PointNormal> (sv_normal_cloud,1,0.05f, "supervoxel_normals");
 
-    pcl::console::print_highlight ("Getting supervoxel adjacency\n");
+    pcl::console::print_highlight("Getting supervoxel adjacency\n");
     std::multimap<uint32_t, uint32_t> supervoxel_adjacency;
-    super.getSupervoxelAdjacency (supervoxel_adjacency);
+    super.getSupervoxelAdjacency(supervoxel_adjacency);
     //To make a graph of the supervoxel adjacency, we need to iterate through the supervoxel adjacency multimap
-    std::multimap<uint32_t,uint32_t>::iterator label_itr = supervoxel_adjacency.begin ();
-    for ( ; label_itr != supervoxel_adjacency.end (); )
-    {
+    std::multimap<uint32_t, uint32_t>::iterator label_itr = supervoxel_adjacency.begin();
+    for (; label_itr != supervoxel_adjacency.end();) {
         //First get the label
         uint32_t supervoxel_label = label_itr->first;
         //Now get the supervoxel corresponding to the label
-        pcl::Supervoxel<PointT>::Ptr supervoxel = supervoxel_clusters.at (supervoxel_label);
+        pcl::Supervoxel<PointT>::Ptr supervoxel = supervoxel_clusters.at(supervoxel_label);
 
         //Now we need to iterate through the adjacent supervoxels and make a point cloud of them
         PointCloudT adjacent_supervoxel_centers;
-        std::multimap<uint32_t,uint32_t>::iterator adjacent_itr = supervoxel_adjacency.equal_range (supervoxel_label).first;
-        for ( ; adjacent_itr!=supervoxel_adjacency.equal_range (supervoxel_label).second; ++adjacent_itr)
-        {
-            pcl::Supervoxel<PointT>::Ptr neighbor_supervoxel = supervoxel_clusters.at (adjacent_itr->second);
-            adjacent_supervoxel_centers.push_back (neighbor_supervoxel->centroid_);
+        std::multimap<uint32_t, uint32_t>::iterator adjacent_itr = supervoxel_adjacency.equal_range(
+                supervoxel_label).first;
+        for (; adjacent_itr != supervoxel_adjacency.equal_range(supervoxel_label).second; ++adjacent_itr) {
+            pcl::Supervoxel<PointT>::Ptr neighbor_supervoxel = supervoxel_clusters.at(adjacent_itr->second);
+            adjacent_supervoxel_centers.push_back(neighbor_supervoxel->centroid_);
         }
         //Now we make a name for this polygon
         std::stringstream ss;
         ss << "supervoxel_" << supervoxel_label;
         //This function is shown below, but is beyond the scope of this tutorial - basically it just generates a "star" polygon mesh from the points given
-        addSupervoxelConnectionsToViewer (supervoxel->centroid_, adjacent_supervoxel_centers, ss.str (), visualizer);
+        addSupervoxelConnectionsToViewer(supervoxel->centroid_, adjacent_supervoxel_centers, ss.str(), visualizer);
         //Move iterator forward to next label
-        label_itr = supervoxel_adjacency.upper_bound (supervoxel_label);
+        label_itr = supervoxel_adjacency.upper_bound(supervoxel_label);
     }
 
     // LCCPSegmentation Stuff
@@ -234,40 +233,66 @@ int main(int argc, char **argv) {
     bool use_sanity_criterion = true;
     unsigned int k_factor = 0; // or change to 1
 
-    pcl::console::parse (argc, argv, "-ctt", concavity_tolerance_threshold);
-    pcl::console::parse (argc, argv, "-st", smoothness_threshold);
-    pcl::console::parse (argc, argv, "-mss", min_segment_size);
-    pcl::console::parse (argc, argv, "-uec", use_extended_convexity);
-    pcl::console::parse (argc, argv, "-usc", use_sanity_criterion);
-    pcl::console::parse (argc, argv, "-kf", k_factor);
-    cout << "smoothness_threshold: "<<smoothness_threshold<<endl;
+    pcl::console::parse(argc, argv, "-ctt", concavity_tolerance_threshold);
+    pcl::console::parse(argc, argv, "-st", smoothness_threshold);
+    pcl::console::parse(argc, argv, "-mss", min_segment_size);
+    pcl::console::parse(argc, argv, "-uec", use_extended_convexity);
+    pcl::console::parse(argc, argv, "-usc", use_sanity_criterion);
+    pcl::console::parse(argc, argv, "-kf", k_factor);
+    cout << "smoothness_threshold: " << smoothness_threshold << endl;
 
     PCL_INFO ("Starting Segmentation\n");
     pcl::LCCPSegmentation<PointT> lccp;
-    lccp.setConcavityToleranceThreshold (concavity_tolerance_threshold);
-    lccp.setSanityCheck (use_sanity_criterion);
-    lccp.setSmoothnessCheck (true, voxel_resolution, seed_resolution, smoothness_threshold);
-    lccp.setKFactor (k_factor);
-    lccp.setInputSupervoxels (supervoxel_clusters, supervoxel_adjacency);
-    lccp.setMinSegmentSize (min_segment_size);
-    lccp.segment ();
+    lccp.setConcavityToleranceThreshold(concavity_tolerance_threshold);
+    lccp.setSanityCheck(use_sanity_criterion);
+    lccp.setSmoothnessCheck(true, voxel_resolution, seed_resolution, smoothness_threshold);
+    lccp.setKFactor(k_factor);
+    lccp.setInputSupervoxels(supervoxel_clusters, supervoxel_adjacency);
+    lccp.setMinSegmentSize(min_segment_size);
+    lccp.segment();
 
 
     PCL_INFO ("Interpolation voxel cloud -> input cloud and relabeling\n");
-    pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud ();
-    pcl::PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared ();
-    lccp.relabelCloud (*lccp_labeled_cloud);
+
+    pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
+    pcl::PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared();
+    lccp.relabelCloud(*lccp_labeled_cloud);
     SuperVoxelAdjacencyList sv_adjacency_list;
-    lccp.getSVAdjacencyList (sv_adjacency_list); // Needed for visualization
+    lccp.getSVAdjacencyList(sv_adjacency_list); // Needed for visualization
+    viewer->setBackgroundColor(0, 0, 0);
+    viewer->addPointCloud(lccp_labeled_cloud, "maincloud");
 
-    viewer->setBackgroundColor (0, 0, 0);
-    viewer->addPointCloud (lccp_labeled_cloud, "maincloud");
+    std::map<uint32_t, std::set<uint32_t>> segmentMap;
+    lccp.getSegmentToSupervoxelMap(segmentMap);
+
+    for (std::map<uint32_t, std::set<uint32_t>>::iterator it = segmentMap.begin(); it != segmentMap.end(); ++it) {
+        //it->second.Method();
+        std::set<uint32_t> voxelSet = it->second;
+        for (uint32_t voxel : voxelSet) {
+            //cout<<it->first<<" "<<voxel<<endl;
+
+        }
+    }
+    //lccp.get
+
+    /*SuperVoxelAdjacencyList sv_adjacency_list;
+    lccp.getSVAdjacencyList (sv_adjacency_list);*/
+
+//    std::pair<VertexIterator, VertexIterator> vertex_iterator_range;
+//    vertex_iterator_range = boost::vertices(sv_adjacency_list);
+//
+//    for (VertexIterator itr = vertex_iterator_range.first; itr != vertex_iterator_range.second; ++itr) {
+//        const uint32_t sv_label = sv_adjacency_list[*itr];
+//        pcl::PointXYZL group_label = lccp_labeled_cloud->points[sv_label];
+//
+//        //sv_adjacency_list.
+//        printf("%d %d\n", sv_label, group_label.label); // supervoxel label, segmentation group label
+//    }
 
 
-    while (!viewer->wasStopped () || !visualizer->wasStopped ())
-    {
-        viewer->spinOnce (100);
-        visualizer->spinOnce (100);
+    while (!viewer->wasStopped() || !visualizer->wasStopped()) {
+        viewer->spinOnce(100);
+        visualizer->spinOnce(100);
     }
 
 /*    visualizer->addPointCloud(cloud, cloudName);
