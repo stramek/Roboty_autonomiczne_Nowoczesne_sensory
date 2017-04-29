@@ -12,6 +12,7 @@
 #include <vtkPolyLine.h>
 
 #include <opencv2/opencv.hpp>
+#include <include/models/CloudPlaneDetector.h>
 
 using namespace std;
 using namespace cv;
@@ -141,6 +142,23 @@ addSupervoxelConnectionsToViewer(PointT &supervoxel_center,
     //viewer->addModelFromPolyData (polyData,supervoxel_name);
 }
 
+uint8_t getC(int tagValue) {
+    return (uint8_t) (tagValue % 255);
+}
+
+void test(pcl::PointCloud<pcl::PointXYZL> &labeled_cloud_arg, pcl::PointCloud<pcl::PointXYZRGB>::Ptr target) {
+
+    for (PointXYZL point : labeled_cloud_arg) {
+        uint32_t label = point.label;
+        pcl::PointXYZRGB pointToAdd = pcl::PointXYZRGB(getC(label), getC(label), getC(label));
+        pointToAdd.x = point.x;
+        pointToAdd.y = point.y;
+        pointToAdd.z = point.z;
+
+        target.get()->points.push_back(pointToAdd);
+    }
+}
+
 int main(int argc, char **argv) {
     color = imread("../images//rgb//0.png");
     depth = imread("../images//depth//0.png", CV_LOAD_IMAGE_ANYDEPTH);
@@ -202,6 +220,7 @@ int main(int argc, char **argv) {
     super.getSupervoxelAdjacency(supervoxel_adjacency);
     //To make a graph of the supervoxel adjacency, we need to iterate through the supervoxel adjacency multimap
     std::multimap<uint32_t, uint32_t>::iterator label_itr = supervoxel_adjacency.begin();
+
     for (; label_itr != supervoxel_adjacency.end();) {
         //First get the label
         uint32_t supervoxel_label = label_itr->first;
@@ -257,36 +276,33 @@ int main(int argc, char **argv) {
     pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
     pcl::PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared();
     lccp.relabelCloud(*lccp_labeled_cloud);
-    SuperVoxelAdjacencyList sv_adjacency_list;
-    lccp.getSVAdjacencyList(sv_adjacency_list); // Needed for visualization
     viewer->setBackgroundColor(0, 0, 0);
-    viewer->addPointCloud(lccp_labeled_cloud, "maincloud");
+    //viewer->addPointCloud(lccp_labeled_cloud, "maincloud");
 
-    std::map<uint32_t, std::set<uint32_t>> segmentMap;
-    lccp.getSegmentToSupervoxelMap(segmentMap);
+    //pcl::PointCloud<pcl::PointXYZRGB>::Ptr target(new pcl::PointCloud<pcl::PointXYZRGB>());
+    //test(*lccp_labeled_cloud, target);
 
-    for (std::map<uint32_t, std::set<uint32_t>>::iterator it = segmentMap.begin(); it != segmentMap.end(); ++it) {
-        //it->second.Method();
-        std::set<uint32_t> voxelSet = it->second;
-        for (uint32_t voxel : voxelSet) {
-            //cout<<it->first<<" "<<voxel<<endl;
+    CloudPlaneDetector cloudPlaneDetector(*lccp_labeled_cloud);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr target = cloudPlaneDetector.getPointCloud();
 
-        }
-    }
-    //lccp.get
 
-    /*SuperVoxelAdjacencyList sv_adjacency_list;
-    lccp.getSVAdjacencyList (sv_adjacency_list);*/
-
-//    std::pair<VertexIterator, VertexIterator> vertex_iterator_range;
-//    vertex_iterator_range = boost::vertices(sv_adjacency_list);
+    viewer->addPointCloud(target, "maincloud");
+//    std::map<uint32_t, std::set<uint32_t>> segmentMap;
+//    lccp.getSegmentToSupervoxelMap(segmentMap);
 //
-//    for (VertexIterator itr = vertex_iterator_range.first; itr != vertex_iterator_range.second; ++itr) {
-//        const uint32_t sv_label = sv_adjacency_list[*itr];
-//        pcl::PointXYZL group_label = lccp_labeled_cloud->points[sv_label];
+//    for (std::map<uint32_t, std::set<uint32_t>>::iterator it = segmentMap.begin(); it != segmentMap.end(); ++it) {
+//        //it->second.Method();
+//        uint32_t mapKey = it->first;
+//        std::set<uint32_t> voxelSet = it->second;
+//        pcl::PointCloud<pcl::PointXYZRGBA>::Ptr finalCloud1(new pcl::PointCloud<pcl::PointXYZRGBA>());
 //
-//        //sv_adjacency_list.
-//        printf("%d %d\n", sv_label, group_label.label); // supervoxel label, segmentation group label
+//        for (uint32_t voxel : voxelSet) {
+//            pcl::Supervoxel<PointT>::Ptr point = supervoxel_clusters.at(voxel);
+//            pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud = point.get()->voxels_;
+//            *finalCloud1 += *cloud;
+//        }
+//        cout<<"Cloud size: "<<finalCloud1->points.size()<<endl;
+//        viewer->addPointCloud(finalCloud1, to_string(it->first));
 //    }
 
 
