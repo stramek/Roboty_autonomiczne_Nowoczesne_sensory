@@ -34,13 +34,10 @@ PointCloud<PointXYZRGB>::Ptr CloudPlaneDetector::getPointCloud() {
 
     PointCloud<PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
 
-
     for (vector<Vector3f> voxel : voxels) {
         MyPlane plane = PlanePca::getPlane(voxel);
-
-
-
         bool isPlane = plane.isValid();
+
         for (Vector3f point : voxel) {
             PointXYZRGB pointXYZRGB = isPlane ? PointXYZRGB(0, 255, 0) : PointXYZRGB(255, 0, 0);
             pointXYZRGB.x = point[0];
