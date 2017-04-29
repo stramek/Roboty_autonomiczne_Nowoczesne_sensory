@@ -8,6 +8,6 @@
 
 using namespace Eigen;
 
-const static float PCA_MAX_ACCEPTED_DISTANCE = 2.0f;
+const static float PCA_MAX_ACCEPTED_DISTANCE = 0.0002f;
 
 #endif //PROJEKTMAGISTERSKI_CONSTANTS_H

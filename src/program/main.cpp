@@ -203,14 +203,14 @@ int main(int argc, char **argv) {
     visualizer->setBackgroundColor(0, 0, 0);
 
     PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud();
-    visualizer->addPointCloud(voxel_centroid_cloud, "voxel centroids");
+    /*visualizer->addPointCloud(voxel_centroid_cloud, "voxel centroids");
     visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2.0, "voxel centroids");
     visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.95, "voxel centroids");
-
+*/
     PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud();
-    visualizer->addPointCloud(labeled_voxel_cloud, "labeled voxels");
+    /*visualizer->addPointCloud(labeled_voxel_cloud, "labeled voxels");
     visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.8, "labeled voxels");
-
+*/
     PointNCloudT::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud(supervoxel_clusters);
     //We have this disabled so graph is easy to see, uncomment to see supervoxel normals
     //visualizer->addPointCloudNormals<PointNormal> (sv_normal_cloud,1,0.05f, "supervoxel_normals");
@@ -276,11 +276,12 @@ int main(int argc, char **argv) {
     pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
     pcl::PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared();
     lccp.relabelCloud(*lccp_labeled_cloud);
+    visualizer->addPointCloud(lccp_labeled_cloud);
     viewer->setBackgroundColor(0, 0, 0);
     //viewer->addPointCloud(lccp_labeled_cloud, "maincloud");
 
-    //pcl::PointCloud<pcl::PointXYZRGB>::Ptr target(new pcl::PointCloud<pcl::PointXYZRGB>());
-    //test(*lccp_labeled_cloud, target);
+//    pcl::PointCloud<pcl::PointXYZRGB>::Ptr target(new pcl::PointCloud<pcl::PointXYZRGB>());
+//    test(*lccp_labeled_cloud, target);
 
     CloudPlaneDetector cloudPlaneDetector(*lccp_labeled_cloud);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr target = cloudPlaneDetector.getPointCloud();
