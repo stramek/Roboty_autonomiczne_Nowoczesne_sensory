@@ -8,6 +8,9 @@
 #include <pcl/segmentation/supervoxel_clustering.h>
 #include <pcl/segmentation/lccp_segmentation.h>
 
+#include "../../include/utils/edited_lccp_segmentation.h"
+#include "../../src/utils/edited_lccp_segmentation.cpp"
+
 //VTK include needed for drawing graph lines
 #include <vtkPolyLine.h>
 
@@ -23,7 +26,7 @@ typedef pcl::PointNormal PointNT;
 typedef pcl::PointCloud<PointNT> PointNCloudT;
 typedef pcl::PointXYZL PointLT;
 typedef pcl::PointCloud<PointLT> PointLCloudT;
-typedef pcl::LCCPSegmentation<PointT>::SupervoxelAdjacencyList SuperVoxelAdjacencyList;
+typedef pcl_edited::LCCPSegmentation<PointT>::SupervoxelAdjacencyList SuperVoxelAdjacencyList;
 
 cv::Mat color, depth;
 cv::Mat cameraMatrixColor;
@@ -243,7 +246,7 @@ int main(int argc, char **argv) {
     cout << "smoothness_threshold: "<<smoothness_threshold<<endl;
 
     PCL_INFO ("Starting Segmentation\n");
-    pcl::LCCPSegmentation<PointT> lccp;
+    pcl_edited::LCCPSegmentation<PointT> lccp;
     lccp.setConcavityToleranceThreshold (concavity_tolerance_threshold);
     lccp.setSanityCheck (use_sanity_criterion);
     lccp.setSmoothnessCheck (true, voxel_resolution, seed_resolution, smoothness_threshold);
