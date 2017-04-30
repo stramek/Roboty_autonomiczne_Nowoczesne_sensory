@@ -175,6 +175,44 @@ boost::shared_ptr<visualization::PCLVisualizer> createAndSetupVisualizer(string 
     return viewer;
 }
 
+void relabelCloud(map<uint32_t, Supervoxel<PointT>::Ptr> supervoxelClusters,
+                  multimap<uint32_t, uint32_t> supervoxelAdjecency,
+                  PointCloud<pcl::PointXYZL>::Ptr cloudToRelabel) {
+    PCL_INFO ("Starting Segmentation\n");
+    pcl_edited::LCCPSegmentation<PointT> lccp;
+    lccp.setConcavityToleranceThreshold (CONCAVITY_TOLERANCE_THRESHOLD);
+    lccp.setSanityCheck (USE_SANITY_CRITERION);
+    lccp.setSmoothnessCheck (true, voxel_resolution, seed_resolution, SMOOTHNESS_THRESHOLD);
+    lccp.setKFactor (K_FACTOR);
+    lccp.setInputSupervoxels (supervoxelClusters, supervoxelAdjecency);
+    lccp.setMinSegmentSize (MIN_SEGMENT_SIZE);
+    lccp.segment();
+    lccp.relabelCloud(*cloudToRelabel);
+}
+
+multimap<uint32_t, uint32_t> getSupervoxelAdjacency(SupervoxelClustering<PointT> super, map<uint32_t, Supervoxel<PointT>::Ptr> supervoxel_clusters) {
+    console::print_highlight ("Getting supervoxel adjacency\n");
+    multimap<uint32_t, uint32_t> supervoxel_adjacency;
+    super.getSupervoxelAdjacency (supervoxel_adjacency);
+    multimap<uint32_t, uint32_t>::iterator label_itr = supervoxel_adjacency.begin();
+    for (; label_itr != supervoxel_adjacency.end();) {
+        //First get the label
+        uint32_t supervoxel_label = label_itr->first;
+        //Now get the supervoxel corresponding to the label
+        Supervoxel<PointT>::Ptr supervoxel = supervoxel_clusters.at (supervoxel_label);
+
+        //Now we need to iterate through the adjacent supervoxels and make a point cloud of them
+        PointCloudT adjacent_supervoxel_centers;
+        multimap<uint32_t,uint32_t>::iterator adjacent_itr = supervoxel_adjacency.equal_range (supervoxel_label).first;
+        for ( ; adjacent_itr!=supervoxel_adjacency.equal_range (supervoxel_label).second; ++adjacent_itr) {
+            Supervoxel<PointT>::Ptr neighbor_supervoxel = supervoxel_clusters.at (adjacent_itr->second);
+            adjacent_supervoxel_centers.push_back (neighbor_supervoxel->centroid_);
+        }
+        label_itr = supervoxel_adjacency.upper_bound(supervoxel_label);
+    }
+    return supervoxel_adjacency;
+}
+
 int main(int argc, char **argv) {
     color = imread("../images//rgb//0.png");
     depth = imread("../images//depth//0.png", CV_LOAD_IMAGE_ANYDEPTH);
@@ -186,65 +224,19 @@ int main(int argc, char **argv) {
     SupervoxelClustering<PointT> super = getSuperVoxelClustering(cloud);
 
     map<uint32_t, Supervoxel<PointT>::Ptr> supervoxel_clusters;
+    super.extract(supervoxel_clusters);
 
-    console::print_highlight ("Extracting supervoxels!\n");
-    super.extract (supervoxel_clusters);
-    console::print_info ("Found %d supervoxels\n", supervoxel_clusters.size ());
+    multimap<uint32_t, uint32_t> supervoxel_adjacency = getSupervoxelAdjacency(super, supervoxel_clusters);
 
-    PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud();
-    PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud();
-    PointNCloudT::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud(supervoxel_clusters);
+    PointCloud<PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
+    PointCloud<PointXYZL>::Ptr lccpLabeledCloud = sv_labeled_cloud->makeShared();
+    relabelCloud(supervoxel_clusters, supervoxel_adjacency, lccpLabeledCloud);
 
-    pcl::console::print_highlight ("Getting supervoxel adjacency\n");
-    std::multimap<uint32_t, uint32_t> supervoxel_adjacency;
-    super.getSupervoxelAdjacency (supervoxel_adjacency);
-    //To make a graph of the supervoxel adjacency, we need to iterate through the supervoxel adjacency multimap
-    std::multimap<uint32_t, uint32_t>::iterator label_itr = supervoxel_adjacency.begin();
+    CloudPlaneDetector cloudPlaneDetector(*lccpLabeledCloud);
+    PointCloud<pcl::PointXYZRGB>::Ptr voxelsCloud = cloudPlaneDetector.getPointCloud();
 
-    for (; label_itr != supervoxel_adjacency.end();) {
-        //First get the label
-        uint32_t supervoxel_label = label_itr->first;
-        //Now get the supervoxel corresponding to the label
-        pcl::Supervoxel<PointT>::Ptr supervoxel = supervoxel_clusters.at (supervoxel_label);
-
-        //Now we need to iterate through the adjacent supervoxels and make a point cloud of them
-        PointCloudT adjacent_supervoxel_centers;
-        std::multimap<uint32_t,uint32_t>::iterator adjacent_itr = supervoxel_adjacency.equal_range (supervoxel_label).first;
-        for ( ; adjacent_itr!=supervoxel_adjacency.equal_range (supervoxel_label).second; ++adjacent_itr) {
-            pcl::Supervoxel<PointT>::Ptr neighbor_supervoxel = supervoxel_clusters.at (adjacent_itr->second);
-            adjacent_supervoxel_centers.push_back (neighbor_supervoxel->centroid_);
-        }
-        label_itr = supervoxel_adjacency.upper_bound (supervoxel_label);
-    }
-
-    // LCCPSegmentation Stuff
-    float concavity_tolerance_threshold = 10;
-    float smoothness_threshold = 0.1;
-    uint32_t min_segment_size = 5;
-    bool use_extended_convexity = true;
-    bool use_sanity_criterion = true;
-    unsigned int k_factor = 0; // or change to 1
-
-    PCL_INFO ("Starting Segmentation\n");
-    pcl_edited::LCCPSegmentation<PointT> lccp;
-    lccp.setConcavityToleranceThreshold (concavity_tolerance_threshold);
-    lccp.setSanityCheck (use_sanity_criterion);
-    lccp.setSmoothnessCheck (true, voxel_resolution, seed_resolution, smoothness_threshold);
-    lccp.setKFactor (k_factor);
-    lccp.setInputSupervoxels (supervoxel_clusters, supervoxel_adjacency);
-    lccp.setMinSegmentSize (min_segment_size);
-    lccp.segment ();
-
-    PCL_INFO ("Interpolation voxel cloud -> input cloud and relabeling\n");
-    PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
-    PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared();
-    lccp.relabelCloud(*lccp_labeled_cloud);
-
-    CloudPlaneDetector cloudPlaneDetector(*lccp_labeled_cloud);
-    PointCloud<pcl::PointXYZRGB>::Ptr target = cloudPlaneDetector.getPointCloud();
-
-    boost::shared_ptr<visualization::PCLVisualizer> planeViewer = createAndSetupVisualizer("Planes", lccp_labeled_cloud);//(new visualization::PCLVisualizer ("Planes"));
-    boost::shared_ptr<visualization::PCLVisualizer> voxelViewer = createAndSetupVisualizer("Voxels", target);//(new visualization::PCLVisualizer("Voxels"));
+    boost::shared_ptr<visualization::PCLVisualizer> planeViewer = createAndSetupVisualizer("Planes", lccpLabeledCloud);
+    boost::shared_ptr<visualization::PCLVisualizer> voxelViewer = createAndSetupVisualizer("Voxels", voxelsCloud);
 
     while (!planeViewer->wasStopped() || !voxelViewer->wasStopped()) {
         planeViewer->spinOnce(100);

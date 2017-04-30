@@ -17,4 +17,12 @@ const static float FOCAL_LENGTH_Y = 525;
 const static float OPTICAL_CENTER_X = 319.5;
 const static float OPTICAL_CENTER_Y = 239.5;
 
+// LCCPSegmentation Stuff
+const static float CONCAVITY_TOLERANCE_THRESHOLD = 10;
+const static float SMOOTHNESS_THRESHOLD = 0.1;
+const static uint32_t MIN_SEGMENT_SIZE = 5;
+const static bool USE_EXTENDED_CONVEXITY = true;
+const static bool USE_SANITY_CRITERION = true;
+const static unsigned int K_FACTOR = 0; // or change to 1
+
 #endif //PROJEKTMAGISTERSKI_CONSTANTS_H
