@@ -32,11 +32,6 @@ cv::Mat color, depth;
 cv::Mat cameraMatrixColor;
 cv::Mat lookupX, lookupY;
 
-const float FOCAL_LENGTH_X = 525;
-const float FOCAL_LENGTH_Y = 525;
-const float OPTICAL_CENTER_X = 319.5;
-const float OPTICAL_CENTER_Y = 239.5;
-
 const Eigen::Matrix<double, 3, 3> PHCP_MODEL = [] {
     Eigen::Matrix<double, 3, 3> matrix;
     matrix << 1 / FOCAL_LENGTH_X, 0, -OPTICAL_CENTER_X / FOCAL_LENGTH_X,
@@ -139,43 +134,62 @@ addSupervoxelConnectionsToViewer (PointT &supervoxel_center,
     polyData->SetLines (cells);
 }
 
-int main(int argc, char **argv) {
-    color = imread("../images//rgb//0.png");
-    depth = imread("../images//depth//0.png", CV_LOAD_IMAGE_ANYDEPTH);
-
-    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud;
-    cloud = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBA>());
+PointCloud<pcl::PointXYZRGBA>::Ptr createEmptyCloud(const Mat &color, const Mat &depth) {
+    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>());
     cloud->height = color.rows;
     cloud->width = color.cols;
     cloud->is_dense = false;
     cloud->points.resize(cloud->height * cloud->width);
+    return cloud;
+}
 
-    cameraMatrixColor = (Mat_<double>(3, 3) <<
-                                            1 / FOCAL_LENGTH_X, 0, -OPTICAL_CENTER_X / FOCAL_LENGTH_X,
+cv::Mat getCameraMatrixColor() {
+    return cameraMatrixColor = (Mat_<double>(3, 3) <<
+            1 / FOCAL_LENGTH_X, 0, -OPTICAL_CENTER_X / FOCAL_LENGTH_X,
             0, 1 / FOCAL_LENGTH_Y, -OPTICAL_CENTER_Y / FOCAL_LENGTH_Y,
             0, 0, 1);
+}
 
-    createLookup(color.cols, color.rows);
-
-    createCloud(depth, color, cloud);
-    const std::string cloudName = "rendered";
-
+SupervoxelClustering<PointT> getSuperVoxelClustering(PointCloud<PointXYZRGBA>::Ptr cloud) {
     pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
     super.setUseSingleCameraTransform (true);
     super.setInputCloud (cloud);
     super.setColorImportance (color_importance);
     super.setSpatialImportance (spatial_importance);
     super.setNormalImportance (normal_importance);
+    return super;
+}
 
-    std::map <uint32_t, pcl::Supervoxel<PointT>::Ptr > supervoxel_clusters;
 
-    pcl::console::print_highlight ("Extracting supervoxels!\n");
+boost::shared_ptr<visualization::PCLVisualizer> createAndSetupVisualizer(string windowName, PointCloud<PointXYZRGB>::Ptr cloud) {
+    boost::shared_ptr<visualization::PCLVisualizer> viewer (new visualization::PCLVisualizer (windowName));
+    viewer->setBackgroundColor(0, 0, 0);
+    viewer->addPointCloud(cloud, "maincloud");
+    return viewer;
+}
+
+boost::shared_ptr<visualization::PCLVisualizer> createAndSetupVisualizer(string windowName, PointCloud<PointXYZL>::Ptr cloud) {
+    boost::shared_ptr<visualization::PCLVisualizer> viewer (new visualization::PCLVisualizer (windowName));
+    viewer->setBackgroundColor(0, 0, 0);
+    viewer->addPointCloud(cloud, "maincloud");
+    return viewer;
+}
+
+int main(int argc, char **argv) {
+    color = imread("../images//rgb//0.png");
+    depth = imread("../images//depth//0.png", CV_LOAD_IMAGE_ANYDEPTH);
+
+    PointCloud<pcl::PointXYZRGBA>::Ptr cloud = createEmptyCloud(color, depth);
+    Mat cameraMatrixColor = getCameraMatrixColor();
+    createLookup(color.cols, color.rows);
+    createCloud(depth, color, cloud);
+    SupervoxelClustering<PointT> super = getSuperVoxelClustering(cloud);
+
+    map<uint32_t, Supervoxel<PointT>::Ptr> supervoxel_clusters;
+
+    console::print_highlight ("Extracting supervoxels!\n");
     super.extract (supervoxel_clusters);
-    pcl::console::print_info ("Found %d supervoxels\n", supervoxel_clusters.size ());
-
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> visualizer(new pcl::visualization::PCLVisualizer("Cloud Viewer"));
-    visualizer->setBackgroundColor (0, 0, 0);
+    console::print_info ("Found %d supervoxels\n", supervoxel_clusters.size ());
 
     PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud();
     PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud();
@@ -196,17 +210,10 @@ int main(int argc, char **argv) {
         //Now we need to iterate through the adjacent supervoxels and make a point cloud of them
         PointCloudT adjacent_supervoxel_centers;
         std::multimap<uint32_t,uint32_t>::iterator adjacent_itr = supervoxel_adjacency.equal_range (supervoxel_label).first;
-        for ( ; adjacent_itr!=supervoxel_adjacency.equal_range (supervoxel_label).second; ++adjacent_itr)
-        {
+        for ( ; adjacent_itr!=supervoxel_adjacency.equal_range (supervoxel_label).second; ++adjacent_itr) {
             pcl::Supervoxel<PointT>::Ptr neighbor_supervoxel = supervoxel_clusters.at (adjacent_itr->second);
             adjacent_supervoxel_centers.push_back (neighbor_supervoxel->centroid_);
         }
-        //Now we make a name for this polygon
-        std::stringstream ss;
-        ss << "supervoxel_" << supervoxel_label;
-        //This function is shown below, but is beyond the scope of this tutorial - basically it just generates a "star" polygon mesh from the points given
-        addSupervoxelConnectionsToViewer (supervoxel->centroid_, adjacent_supervoxel_centers, ss.str (), visualizer);
-        //Move iterator forward to next label
         label_itr = supervoxel_adjacency.upper_bound (supervoxel_label);
     }
 
@@ -228,23 +235,20 @@ int main(int argc, char **argv) {
     lccp.setMinSegmentSize (min_segment_size);
     lccp.segment ();
 
-
     PCL_INFO ("Interpolation voxel cloud -> input cloud and relabeling\n");
-
-    pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
-    pcl::PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared();
+    PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
+    PointCloud<pcl::PointXYZL>::Ptr lccp_labeled_cloud = sv_labeled_cloud->makeShared();
     lccp.relabelCloud(*lccp_labeled_cloud);
-    visualizer->addPointCloud(lccp_labeled_cloud);
-    viewer->setBackgroundColor(0, 0, 0);
 
     CloudPlaneDetector cloudPlaneDetector(*lccp_labeled_cloud);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr target = cloudPlaneDetector.getPointCloud();
+    PointCloud<pcl::PointXYZRGB>::Ptr target = cloudPlaneDetector.getPointCloud();
 
-    viewer->addPointCloud(target, "maincloud");
+    boost::shared_ptr<visualization::PCLVisualizer> planeViewer = createAndSetupVisualizer("Planes", lccp_labeled_cloud);//(new visualization::PCLVisualizer ("Planes"));
+    boost::shared_ptr<visualization::PCLVisualizer> voxelViewer = createAndSetupVisualizer("Voxels", target);//(new visualization::PCLVisualizer("Voxels"));
 
-    while (!viewer->wasStopped() || !visualizer->wasStopped()) {
-        viewer->spinOnce(100);
-        visualizer->spinOnce(100);
+    while (!planeViewer->wasStopped() || !voxelViewer->wasStopped()) {
+        planeViewer->spinOnce(100);
+        voxelViewer->spinOnce(100);
     }
     return 0;
 }
