@@ -29,7 +29,6 @@ typedef pcl::PointXYZL PointLT;
 typedef pcl::PointCloud<PointLT> PointLCloudT;
 
 cv::Mat color, depth;
-cv::Mat cameraMatrixColor;
 cv::Mat lookupX, lookupY;
 
 const Eigen::Matrix<double, 3, 3> PHCP_MODEL = [] {
@@ -143,13 +142,6 @@ PointCloud<pcl::PointXYZRGBA>::Ptr createEmptyCloud(const Mat &color, const Mat 
     return cloud;
 }
 
-cv::Mat getCameraMatrixColor() {
-    return cameraMatrixColor = (Mat_<double>(3, 3) <<
-            1 / FOCAL_LENGTH_X, 0, -OPTICAL_CENTER_X / FOCAL_LENGTH_X,
-            0, 1 / FOCAL_LENGTH_Y, -OPTICAL_CENTER_Y / FOCAL_LENGTH_Y,
-            0, 0, 1);
-}
-
 SupervoxelClustering<PointT> getSuperVoxelClustering(PointCloud<PointXYZRGBA>::Ptr cloud) {
     pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
     super.setUseSingleCameraTransform (true);
@@ -218,7 +210,6 @@ int main(int argc, char **argv) {
     depth = imread("../images//depth//0.png", CV_LOAD_IMAGE_ANYDEPTH);
 
     PointCloud<pcl::PointXYZRGBA>::Ptr cloud = createEmptyCloud(color, depth);
-    Mat cameraMatrixColor = getCameraMatrixColor();
     createLookup(color.cols, color.rows);
     createCloud(depth, color, cloud);
     SupervoxelClustering<PointT> super = getSuperVoxelClustering(cloud);
