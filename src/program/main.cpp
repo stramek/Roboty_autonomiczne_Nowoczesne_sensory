@@ -64,10 +64,6 @@ void getPoint(unsigned int u, unsigned int v, float depth, Eigen::Vector3d &poin
 }
 
 void createLookup(size_t width, size_t height) {
-    const float fx = 1.0f / cameraMatrixColor.at<float>(0, 0);
-    const float fy = 1.0f / cameraMatrixColor.at<float>(1, 1);
-    const float cx = cameraMatrixColor.at<float>(0, 2);
-    const float cy = cameraMatrixColor.at<float>(1, 2);
     float *it;
 
     lookupY = cv::Mat(1, height, CV_32F);
@@ -119,8 +115,7 @@ void
 addSupervoxelConnectionsToViewer (PointT &supervoxel_center,
                                   PointCloudT &adjacent_supervoxel_centers,
                                   std::string supervoxel_name,
-                                  boost::shared_ptr<pcl::visualization::PCLVisualizer> & viewer)
-{
+                                  boost::shared_ptr<pcl::visualization::PCLVisualizer> & viewer) {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New ();
     vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New ();
     vtkSmartPointer<vtkPolyLine> polyLine = vtkSmartPointer<vtkPolyLine>::New ();
@@ -222,14 +217,6 @@ int main(int argc, char **argv) {
     bool use_extended_convexity = true;
     bool use_sanity_criterion = true;
     unsigned int k_factor = 0; // or change to 1
-
-    pcl::console::parse (argc, argv, "-ctt", concavity_tolerance_threshold);
-    pcl::console::parse (argc, argv, "-st", smoothness_threshold);
-    pcl::console::parse (argc, argv, "-mss", min_segment_size);
-    pcl::console::parse (argc, argv, "-uec", use_extended_convexity);
-    pcl::console::parse (argc, argv, "-usc", use_sanity_criterion);
-    pcl::console::parse (argc, argv, "-kf", k_factor);
-    cout << "smoothness_threshold: "<<smoothness_threshold<<endl;
 
     PCL_INFO ("Starting Segmentation\n");
     pcl_edited::LCCPSegmentation<PointT> lccp;
