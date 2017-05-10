@@ -26,10 +26,6 @@ CloudPlaneDetector::CloudPlaneDetector(PointCloud<PointXYZL> &inputCloud) {
     }
 }
 
-uint8_t getCC(int tagValue) {
-    return (uint8_t) (tagValue % 255);
-}
-
 PointCloud<PointXYZRGB>::Ptr CloudPlaneDetector::getPointCloud() {
 
     PointCloud<PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>());

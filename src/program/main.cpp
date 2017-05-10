@@ -23,10 +23,6 @@ using namespace cv;
 // Types
 typedef pcl::PointXYZRGBA PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
-typedef pcl::PointNormal PointNT;
-typedef pcl::PointCloud<PointNT> PointNCloudT;
-typedef pcl::PointXYZL PointLT;
-typedef pcl::PointCloud<PointLT> PointLCloudT;
 
 cv::Mat color, depth;
 cv::Mat lookupX, lookupY;
@@ -103,34 +99,6 @@ void createCloud(const cv::Mat &depth, const cv::Mat &color, pcl::PointCloud<pcl
             itP->a = 255;
         }
     }
-}
-
-void
-addSupervoxelConnectionsToViewer (PointT &supervoxel_center,
-                                  PointCloudT &adjacent_supervoxel_centers,
-                                  std::string supervoxel_name,
-                                  boost::shared_ptr<pcl::visualization::PCLVisualizer> & viewer) {
-    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New ();
-    vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New ();
-    vtkSmartPointer<vtkPolyLine> polyLine = vtkSmartPointer<vtkPolyLine>::New ();
-
-    //Iterate through all adjacent points, and add a center point to adjacent point pair
-    PointCloudT::iterator adjacent_itr = adjacent_supervoxel_centers.begin ();
-    for ( ; adjacent_itr != adjacent_supervoxel_centers.end (); ++adjacent_itr)
-    {
-        points->InsertNextPoint (supervoxel_center.data);
-        points->InsertNextPoint (adjacent_itr->data);
-    }
-    // Create a polydata to store everything in
-    vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New ();
-    // Add the points to the dataset
-    polyData->SetPoints (points);
-    polyLine->GetPointIds  ()->SetNumberOfIds(points->GetNumberOfPoints ());
-    for(unsigned int i = 0; i < points->GetNumberOfPoints (); i++)
-        polyLine->GetPointIds ()->SetId (i,i);
-    cells->InsertNextCell (polyLine);
-    // Add the lines to the dataset
-    polyData->SetLines (cells);
 }
 
 PointCloud<pcl::PointXYZRGBA>::Ptr createEmptyCloud(const Mat &color, const Mat &depth) {
