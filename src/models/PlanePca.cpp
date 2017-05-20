@@ -18,6 +18,8 @@ MatrixXf PlanePca::computeCovMatrix(const MatrixXf &matrix) {
 }
 
 MyPlane PlanePca::computePlane(const vector<Vector3f> &pointsVector) {
+    if(pointsVector.size() < 3)
+        return MyPlane();
     MatrixXf matrix;
     pointsVectorToMatrix(pointsVector, matrix);
     MatrixXf covMatrix = computeCovMatrix(matrix);
