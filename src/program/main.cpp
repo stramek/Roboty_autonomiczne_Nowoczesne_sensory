@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 
     CloudPlaneDetector cloudPlaneDetector(*lccpLabeledCloud);
     statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
-    //statisticsModule.calculateAndPrint();
+    statisticsModule.calculateAndPrint();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelsCloud = cloudPlaneDetector.getPointCloud();
 
     boost::shared_ptr<pcl::visualization::PCLVisualizer> planeViewer = createAndSetupVisualizer("Planes", lccpLabeledCloud);
