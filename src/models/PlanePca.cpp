@@ -35,6 +35,7 @@ MyPlane PlanePca::computePlane(const vector<Vector3f> &pointsVector) {
     return MyPlane();
 }
 
+
 MyPlane PlanePca::getPlane(const vector<Vector3f> &pointsVector) {
     return computePlane(pointsVector);
 }

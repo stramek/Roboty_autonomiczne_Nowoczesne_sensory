@@ -9,30 +9,31 @@
 
 #include "include/models/PlanePca.h"
 
-#include <opencv2/opencv.hpp>
 #include <array>
 #include <vector>
 #include <Eigen/Dense>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include "include/models/StatisticsModule.h"
+#include <opencv2/opencv.hpp>
 
-
-using namespace pcl;
-using namespace std;
-using namespace Eigen;
+//using namespace pcl;
+//using namespace std;
+//using namespace Eigen;
 
 class CloudPlaneDetector {
 public:
-    CloudPlaneDetector(PointCloud<PointXYZL> &inputCloud);
+    CloudPlaneDetector(pcl::PointCloud<pcl::PointXYZL> &inputCloud);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPointCloud();
 
-    PointCloud<PointXYZRGB>::Ptr getPointCloud();
+    const vector<vector<Vector3f>> &getVoxels() const;
 
 private:
-    vector<PointXYZL> points;
+    vector<pcl::PointXYZL> points;
     vector<vector<Vector3f>> voxels;
 
     struct sortPointsByLabel {
-        inline bool operator()(const PointXYZL &point1, const PointXYZL &point2) {
+        inline bool operator()(const pcl::PointXYZL &point1, const pcl::PointXYZL &point2) {
             return (point1.label < point2.label);
         }
     };

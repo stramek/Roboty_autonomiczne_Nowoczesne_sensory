@@ -1,12 +1,12 @@
 #include "include/models/CloudPlaneDetector.h"
 
-CloudPlaneDetector::CloudPlaneDetector(PointCloud<PointXYZL> &inputCloud) {
+CloudPlaneDetector::CloudPlaneDetector(pcl::PointCloud<pcl::PointXYZL> &inputCloud) {
 
     if (inputCloud.points.size() == 0) {
         throw runtime_error("Passed cloud is empty!");
     }
 
-    for (PointXYZL point : inputCloud) {
+    for (pcl::PointXYZL point : inputCloud) {
         points.push_back(point);
     }
 
@@ -14,7 +14,7 @@ CloudPlaneDetector::CloudPlaneDetector(PointCloud<PointXYZL> &inputCloud) {
 
     uint32_t lastPoint = inputCloud.at(0).label;
     vector<Vector3f> voxel;
-    for (PointXYZL point : points) {
+    for (pcl::PointXYZL point : points) {
         if (point.label != lastPoint) {
             voxels.push_back(voxel);
             voxel.clear();
@@ -26,22 +26,31 @@ CloudPlaneDetector::CloudPlaneDetector(PointCloud<PointXYZL> &inputCloud) {
     }
 }
 
-PointCloud<PointXYZRGB>::Ptr CloudPlaneDetector::getPointCloud() {
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr CloudPlaneDetector::getPointCloud() {
 
-    PointCloud<PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+
 
     for (vector<Vector3f> voxel : voxels) {
         MyPlane plane = PlanePca::getPlane(voxel);
         bool isPlane = plane.isValid();
 
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr localCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+
         for (Vector3f point : voxel) {
-            PointXYZRGB pointXYZRGB = isPlane ? PointXYZRGB(0, 255, 0) : PointXYZRGB(255, 0, 0);
+            pcl::PointXYZRGB pointXYZRGB = isPlane ? pcl::PointXYZRGB(0, 255, 0) : pcl::PointXYZRGB(255, 0, 0);
             pointXYZRGB.x = point[0];
             pointXYZRGB.y = point[1];
             pointXYZRGB.z = point[2];
             coloredCloud.get()->points.push_back(pointXYZRGB);
+            localCloud.get()->points.push_back(pointXYZRGB);
         }
+
     }
 
     return coloredCloud;
+}
+
+const vector<vector<Vector3f>> &CloudPlaneDetector::getVoxels() const {
+    return voxels;
 }

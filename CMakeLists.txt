@@ -47,7 +47,7 @@ file(GLOB UTILS_SOURCES
 file(GLOB UTILS_HEADERS
         "${CMAKE_SOURCE_DIR}/include/utils/*.h"
         )
-ADD_LIBRARY(Utils STATIC ${UTILS_SOURCES} ${UTILS_HEADERS} include/utils/edited_lccp_segmentation.h src/utils/edited_lccp_segmentation.cpp)
+ADD_LIBRARY(Utils STATIC ${UTILS_SOURCES} ${UTILS_HEADERS})
 INSTALL(FILES ${DEFS_HEADERS} DESTINATION include/utils/)
 
 #########################################
