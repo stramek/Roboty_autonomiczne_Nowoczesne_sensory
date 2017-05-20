@@ -32,6 +32,7 @@ private:
     void printOutput();
     double calculateTotalArea(pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud);
     double calculateCurvatures(pcl::PointCloud<pcl::PointXYZ>::Ptr vortexCloud);
+    void printProgressBar(const int firstCount = 0, const int firstMax = 1, const int secondCount = 0, const int secondMax = 1);
 };
 
 
