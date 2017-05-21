@@ -178,17 +178,11 @@ multimap<uint32_t, uint32_t> getSupervoxelAdjacency(pcl::SupervoxelClustering<Po
 
 int main(int argc, char **argv) {
 
-
-
     ///////
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGB (new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PLYReader Reader;
     Reader.read("../cloud_merged.ply", *cloudRGB);
-
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> visualizerReadCloud(new pcl::visualization::PCLVisualizer("Cloud Viewer"));
-    visualizerReadCloud->setBackgroundColor (0, 0, 0);
-    visualizerReadCloud->addPointCloud (cloudRGB, "Read cloud");
 
     pcl::PointCloud<pcl::PointXYZRGBA> cloudRGBA;
     pcl::PointCloud<pcl::PointXYZRGB> cloudTmp = *cloudRGB;
@@ -210,12 +204,11 @@ int main(int argc, char **argv) {
     relabelCloud(supervoxel_clusters, supervoxel_adjacency, lccpLabeledCloud);
 
     CloudPlaneDetector cloudPlaneDetector(*lccpLabeledCloud);
-    statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
-    statisticsModule.calculateAndPrint();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelsCloud = cloudPlaneDetector.getPointCloud();
 
     boost::shared_ptr<pcl::visualization::PCLVisualizer> planeViewer = createAndSetupVisualizer("Planes", lccpLabeledCloud);
     boost::shared_ptr<pcl::visualization::PCLVisualizer> voxelViewer = createAndSetupVisualizer("Voxels", voxelsCloud);
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> visualizerReadCloud = createAndSetupVisualizer("Cloud Viewer", cloudRGB);
 
     while (!planeViewer->wasStopped() || !voxelViewer->wasStopped()) {
         planeViewer->spinOnce(100);
