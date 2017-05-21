@@ -9,11 +9,12 @@ StatisticsModule::StatisticsModule() {}
 void StatisticsModule::printProgressBar(const int firstCount, const int firstMax, const int secondCount, const int secondMax) {
 
     float progress = firstCount / (float) firstMax;
-    float progress2 = secondCount / (float) secondMax;
+    float progress2 = (secondCount / (float) secondMax) + (progress / secondMax);
+    if (progress2 > 1.0f) progress2 = 1.0f;
 
-    int barWidth = 40;
+    int barWidth = 20;
 
-    cout << "voxels: [";
+    cout << "Scene progress: [";
     int pos = barWidth * progress;
     for (int i = 0; i < barWidth; ++i) {
         if (i < pos) cout << "=";
@@ -22,23 +23,22 @@ void StatisticsModule::printProgressBar(const int firstCount, const int firstMax
     }
     cout << "] " << int(progress * 100.0) << " %  ";
 
-    cout << "scenes: [";
+    cout << "Final progress: [";
     int pos2 = barWidth * progress2;
     for (int i = 0; i < barWidth; ++i) {
         if (i < pos2) cout << "=";
         else if (i == pos2) cout << ">";
         else cout << " ";
     }
-    cout << "] " << int(progress2 * 100.0) << " %\r";
-
+    cout << "] " << int(progress2 * 100.0) << " %    \r";
     cout.flush();
 }
 
-void StatisticsModule::appendSceneVoxels(const std::vector<std::vector<Eigen::Vector3f>> &voxels) {
+void StatisticsModule::appendSceneVoxels(std::vector<std::vector<Eigen::Vector3f>> voxels) {
     scenes.push_back(voxels);
 }
 
-void StatisticsModule::calculateAndPrint() {
+void StatisticsModule::calculateAndPrint(bool calculateCurvature) {
 
     double areaSum = 0;
     double curvaturesSum = 0;
@@ -63,7 +63,10 @@ void StatisticsModule::calculateAndPrint() {
                 voxelCloud.get()->points.push_back(pcl::PointXYZ(point[0], point[1], point[2]));
             }
             double calculatedArea = calculateTotalArea(voxelCloud);
-            double calculatedCuravture = calculateCurvatures(voxelCloud);
+            double calculatedCuravture = -1;
+            if (calculateCurvature) {
+                calculatedCuravture = calculateCurvatures(voxelCloud);
+            }
             if (!isnan(calculatedArea) && !isnan(calculatedCuravture)) {
                 areaSum += calculatedArea;
                 curvaturesSum += calculatedCuravture;
@@ -133,22 +136,5 @@ double StatisticsModule::calculateCurvatures(pcl::PointCloud<pcl::PointXYZ>::Ptr
     principal_curvatures_estimation.compute (*principal_curvatures);
 
     pcl::PrincipalCurvatures descriptor = principal_curvatures->points[0];
-    cout<<"Wartość: "<<descriptor.pc1<<endl;
     return descriptor.pc1;
-}
-
-double StatisticsModule::getPlanesByScene() const {
-    return planesByScene;
-}
-
-double StatisticsModule::getAverageArea() const {
-    return averageArea;
-}
-
-double StatisticsModule::getAverageCurvature() const {
-    return averageCurvature;
-}
-
-void StatisticsModule::clearScenes() {
-    scenes.clear();
 }

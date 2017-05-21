@@ -23,13 +23,13 @@
 
 class CloudPlaneDetector {
 public:
-    CloudPlaneDetector(pcl::PointCloud<pcl::PointXYZL> &inputCloud);
+    CloudPlaneDetector();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPointCloud();
-
+    void calculatePointCloud(pcl::PointCloud<pcl::PointXYZL> &inputCloud);
     const vector<vector<Vector3f>> &getVoxels() const;
-
 private:
     vector<pcl::PointXYZL> points;
+
     vector<vector<Vector3f>> voxels;
 
     struct sortPointsByLabel {

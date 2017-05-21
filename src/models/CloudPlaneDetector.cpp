@@ -1,6 +1,9 @@
 #include "include/models/CloudPlaneDetector.h"
 
-CloudPlaneDetector::CloudPlaneDetector(pcl::PointCloud<pcl::PointXYZL> &inputCloud) {
+CloudPlaneDetector::CloudPlaneDetector() {}
+
+void CloudPlaneDetector::calculatePointCloud(pcl::PointCloud<pcl::PointXYZL> &inputCloud) {
+    points.clear();
 
     if (inputCloud.points.size() == 0) {
         throw runtime_error("Passed cloud is empty!");
@@ -29,8 +32,6 @@ CloudPlaneDetector::CloudPlaneDetector(pcl::PointCloud<pcl::PointXYZL> &inputClo
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr CloudPlaneDetector::getPointCloud() {
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
-
-
     for (vector<Vector3f> voxel : voxels) {
         MyPlane plane = PlanePca::getPlane(voxel);
         bool isPlane = plane.isValid();
@@ -45,7 +46,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr CloudPlaneDetector::getPointCloud() {
             coloredCloud.get()->points.push_back(pointXYZRGB);
             localCloud.get()->points.push_back(pointXYZRGB);
         }
-
     }
 
     return coloredCloud;
