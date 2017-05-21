@@ -10,7 +10,6 @@ void StatisticsModule::printProgressBar(const int firstCount, const int firstMax
 
     float progress = firstCount / (float) firstMax;
     float progress2 = (secondCount / (float) secondMax) + (progress / secondMax);
-    if (progress2 > 1.0f) progress2 = 1.0f;
 
     int barWidth = 20;
 
@@ -79,7 +78,6 @@ void StatisticsModule::calculateAndPrint(bool calculateCurvature) {
     planesByScene = planes / scenes.size();
     averageArea = areaSum / planes;
     averageCurvature = curvaturesSum / planes;
-    printProgressBar(1, 1, sceneNumber, (int) scenes.size());
     std::cout<<std::endl<<std::endl;
     printOutput();
 }

@@ -209,7 +209,8 @@ int main(int argc, char **argv) {
 
     cloudPlaneDetector.calculatePointCloud(*lccpLabeledCloud);
     statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
-    statisticsModule.calculateAndPrint(true);
+    statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
+    statisticsModule.calculateAndPrint(false);
 
     return 0;
 }
