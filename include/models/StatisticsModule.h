@@ -27,7 +27,7 @@ private:
     double averageCurvature = -1;
     void printOutput();
     double calculateTotalArea(pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud);
-    double calculateCurvatures(pcl::PointCloud<pcl::PointXYZ>::Ptr vortexCloud);
+    pair<double, Eigen::Vector4f> calculatePointNormal(pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud);
     void printProgressBar(const int firstCount = 0, const int firstMax = 1, const int secondCount = 0, const int secondMax = 1);
 };
 

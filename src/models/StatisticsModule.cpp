@@ -62,13 +62,13 @@ void StatisticsModule::calculateAndPrint(bool calculateCurvature) {
                 voxelCloud.get()->points.push_back(pcl::PointXYZ(point[0], point[1], point[2]));
             }
             double calculatedArea = calculateTotalArea(voxelCloud);
-            double calculatedCuravture = -1;
-            if (calculateCurvature) {
-                calculatedCuravture = calculateCurvatures(voxelCloud);
-            }
-            if (!isnan(calculatedArea) && !isnan(calculatedCuravture)) {
+            pair<double, Eigen::Vector4f> pointNormal = calculatePointNormal(voxelCloud);
+
+            // TODO: Do something with "pointNormal.second" -> Eigen::Vector4f
+
+            if (!isnan(calculatedArea) && !isnan(pointNormal.first)) {
                 areaSum += calculatedArea;
-                curvaturesSum += calculatedCuravture;
+                curvaturesSum += pointNormal.first;
                 planes++;
             }
             printProgressBar(voxelNo, (int) validVoxels.size(), sceneNumber, (int) scenes.size());
@@ -83,12 +83,12 @@ void StatisticsModule::calculateAndPrint(bool calculateCurvature) {
 }
 
 void StatisticsModule::printOutput() {
-    cout<<"----------------------------------STATISTICS----------------------------------------"<<endl;
+    cout<<"-----------------------------STATISTICS-----------------------------------"<<endl;
     cout<<"Number of scenes: "<<scenes.size()<<endl;
     cout<<"Planes by scene with minimum number of points of "<<MINIMUM_POINTS_VALUE<<": "<<planesByScene<<endl;
     cout<<"Average area: "<<averageArea<<endl;
     cout<<"Average Curvature: "<<averageCurvature<<endl;
-    cout<<"------------------------------------------------------------------------------------"<<endl;
+    cout<<"--------------------------------------------------------------------------"<<endl;
 }
 
 double StatisticsModule::calculateTotalArea(pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud) {
@@ -101,38 +101,9 @@ double StatisticsModule::calculateTotalArea(pcl::PointCloud<pcl::PointXYZ>::Ptr 
     return cHull.getTotalArea();
 }
 
-double StatisticsModule::calculateCurvatures(pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud) {
-
-    // Compute the normals
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimation;
-    normal_estimation.setInputCloud (voxelCloud);
-
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
-    normal_estimation.setSearchMethod (tree);
-
-    pcl::PointCloud<pcl::Normal>::Ptr cloud_with_normals (new pcl::PointCloud<pcl::Normal>);
-
-    normal_estimation.setRadiusSearch (0.03);
-
-    normal_estimation.compute (*cloud_with_normals);
-
-    // Setup the principal curvatures computation
-    pcl::PrincipalCurvaturesEstimation<pcl::PointXYZ, pcl::Normal, pcl::PrincipalCurvatures> principal_curvatures_estimation;
-
-    // Provide the original point cloud (without normals)
-    principal_curvatures_estimation.setInputCloud (voxelCloud);
-
-    // Provide the point cloud with normals
-    principal_curvatures_estimation.setInputNormals (cloud_with_normals);
-
-    // Use the same KdTree from the normal estimation
-    principal_curvatures_estimation.setSearchMethod (tree);
-    principal_curvatures_estimation.setRadiusSearch (0.5);
-
-    // Actually compute the principal curvatures
-    pcl::PointCloud<pcl::PrincipalCurvatures>::Ptr principal_curvatures (new pcl::PointCloud<pcl::PrincipalCurvatures> ());
-    principal_curvatures_estimation.compute (*principal_curvatures);
-
-    pcl::PrincipalCurvatures descriptor = principal_curvatures->points[0];
-    return descriptor.pc1;
+pair<double, Eigen::Vector4f> StatisticsModule::calculatePointNormal(pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud) {
+    Eigen::Vector4f planeParameters;
+    float curvature;
+    pcl::computePointNormal(*voxelCloud, planeParameters, curvature);
+    return pair<double, Eigen::Vector4f>(curvature, planeParameters);
 }

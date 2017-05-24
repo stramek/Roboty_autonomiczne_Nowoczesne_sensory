@@ -29,7 +29,6 @@ typedef pcl::PointCloud<PointT> PointCloudT;
 cv::Mat color, depth;
 cv::Mat lookupX, lookupY;
 StatisticsModule statisticsModule;
-CloudPlaneDetector cloudPlaneDetector;
 
 const Eigen::Matrix<double, 3, 3> PHCP_MODEL = [] {
     Eigen::Matrix<double, 3, 3> matrix;
@@ -85,7 +84,7 @@ void createCloud(const cv::Mat &depth, const cv::Mat &color, pcl::PointCloud<pcl
         const float *itX = lookupX.ptr<float>();
 
         for (size_t c = 0; c < (size_t) depth.cols; ++c, ++itP, ++itD, ++itC, ++itX) {
-            register const float depthValue = *itD /5000.0f;
+            register const float depthValue = *itD / 5000.0f;
             getPoint(c, r, depthValue, point);
             // Check for invalid measurements
             if (*itD == 0) {
@@ -115,115 +114,108 @@ pcl::PointCloud<pcl::PointXYZRGBA>::Ptr createEmptyCloud(const Mat &color, const
 }
 
 pcl::SupervoxelClustering<PointT> getSuperVoxelClustering(pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud) {
-    pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
-    super.setUseSingleCameraTransform (false);
-    super.setInputCloud (cloud);
-    super.setColorImportance (color_importance);
-    super.setSpatialImportance (spatial_importance);
-    super.setNormalImportance (normal_importance);
+    pcl::SupervoxelClustering<PointT> super(voxel_resolution, seed_resolution);
+    super.setUseSingleCameraTransform(false);
+    super.setInputCloud(cloud);
+    super.setColorImportance(color_importance);
+    super.setSpatialImportance(spatial_importance);
+    super.setNormalImportance(normal_importance);
     return super;
 }
 
 
-boost::shared_ptr<pcl::visualization::PCLVisualizer> createAndSetupVisualizer(string windowName, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud) {
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer (windowName));
+boost::shared_ptr<pcl::visualization::PCLVisualizer>
+createAndSetupVisualizer(string windowName, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud) {
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer(windowName));
     viewer->setBackgroundColor(0, 0, 0);
     viewer->addPointCloud(cloud, "maincloud");
     return viewer;
 }
 
-boost::shared_ptr<pcl::visualization::PCLVisualizer> createAndSetupVisualizer(string windowName, pcl::PointCloud<pcl::PointXYZL>::Ptr cloud) {
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer (windowName));
+boost::shared_ptr<pcl::visualization::PCLVisualizer>
+createAndSetupVisualizer(string windowName, pcl::PointCloud<pcl::PointXYZL>::Ptr cloud) {
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer(windowName));
     viewer->setBackgroundColor(0, 0, 0);
     viewer->addPointCloud(cloud, "maincloud");
     return viewer;
 }
 
-void relabelCloud(map<uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxelClusters,
-                  multimap<uint32_t, uint32_t> supervoxelAdjecency,
+void relabelCloud(map <uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxelClusters,
+                  multimap <uint32_t, uint32_t> supervoxelAdjecency,
                   pcl::PointCloud<pcl::PointXYZL>::Ptr cloudToRelabel) {
-    PCL_INFO ("Starting Segmentation\n");
+    PCL_INFO("Starting Segmentation\n");
     pcl_edited::LCCPSegmentation<PointT> lccp;
-    lccp.setConcavityToleranceThreshold (CONCAVITY_TOLERANCE_THRESHOLD);
-    lccp.setSanityCheck (USE_SANITY_CRITERION);
-    lccp.setSmoothnessCheck (true, voxel_resolution, seed_resolution, SMOOTHNESS_THRESHOLD);
-    lccp.setKFactor (K_FACTOR);
-    lccp.setInputSupervoxels (supervoxelClusters, supervoxelAdjecency);
-    lccp.setMinSegmentSize (MIN_SEGMENT_SIZE);
+    lccp.setConcavityToleranceThreshold(CONCAVITY_TOLERANCE_THRESHOLD);
+    lccp.setSanityCheck(USE_SANITY_CRITERION);
+    lccp.setSmoothnessCheck(true, voxel_resolution, seed_resolution, SMOOTHNESS_THRESHOLD);
+    lccp.setKFactor(K_FACTOR);
+    lccp.setInputSupervoxels(supervoxelClusters, supervoxelAdjecency);
+    lccp.setMinSegmentSize(MIN_SEGMENT_SIZE);
     lccp.segment();
     lccp.relabelCloud(*cloudToRelabel);
 }
 
-multimap<uint32_t, uint32_t> getSupervoxelAdjacency(pcl::SupervoxelClustering<PointT> super, map<uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxel_clusters) {
-    pcl::console::print_highlight ("Getting supervoxel adjacency\n");
-    multimap<uint32_t, uint32_t> supervoxel_adjacency;
-    super.getSupervoxelAdjacency (supervoxel_adjacency);
+multimap <uint32_t, uint32_t> getSupervoxelAdjacency(pcl::SupervoxelClustering<PointT> super,
+                                                     map <uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxel_clusters) {
+    pcl::console::print_highlight("Getting supervoxel adjacency\n");
+    multimap <uint32_t, uint32_t> supervoxel_adjacency;
+    super.getSupervoxelAdjacency(supervoxel_adjacency);
     multimap<uint32_t, uint32_t>::iterator label_itr = supervoxel_adjacency.begin();
     for (; label_itr != supervoxel_adjacency.end();) {
         //First get the label
         uint32_t supervoxel_label = label_itr->first;
         //Now get the supervoxel corresponding to the label
-        pcl::Supervoxel<PointT>::Ptr supervoxel = supervoxel_clusters.at (supervoxel_label);
+        pcl::Supervoxel<PointT>::Ptr supervoxel = supervoxel_clusters.at(supervoxel_label);
 
         //Now we need to iterate through the adjacent supervoxels and make a point cloud of them
         PointCloudT adjacent_supervoxel_centers;
-        multimap<uint32_t,uint32_t>::iterator adjacent_itr = supervoxel_adjacency.equal_range (supervoxel_label).first;
-        for ( ; adjacent_itr!=supervoxel_adjacency.equal_range (supervoxel_label).second; ++adjacent_itr) {
-            pcl::Supervoxel<PointT>::Ptr neighbor_supervoxel = supervoxel_clusters.at (adjacent_itr->second);
-            adjacent_supervoxel_centers.push_back (neighbor_supervoxel->centroid_);
+        multimap<uint32_t, uint32_t>::iterator adjacent_itr = supervoxel_adjacency.equal_range(supervoxel_label).first;
+        for (; adjacent_itr != supervoxel_adjacency.equal_range(supervoxel_label).second; ++adjacent_itr) {
+            pcl::Supervoxel<PointT>::Ptr neighbor_supervoxel = supervoxel_clusters.at(adjacent_itr->second);
+            adjacent_supervoxel_centers.push_back(neighbor_supervoxel->centroid_);
         }
         label_itr = supervoxel_adjacency.upper_bound(supervoxel_label);
     }
     return supervoxel_adjacency;
 }
 
-void appendToStatisticsByName(string path) {
-
-
-}
-
 void loadPlyFile(int number, pcl::PointCloud<pcl::PointXYZRGBA> &cloud) {
     pcl::PLYReader Reader;
     String stringNumber = to_string(number);
     while (stringNumber.length() <= 3) stringNumber = "0" + stringNumber;
-    cout<<stringNumber<<endl;
     string path = "../clouds/cloud" + stringNumber + ".ply";
-    cout<<path<<endl;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGB (new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGB(new pcl::PointCloud<pcl::PointXYZRGB>);
     Reader.read(path, *cloudRGB);
     pcl::PointCloud<pcl::PointXYZRGBA> cloudRGBA;
     pcl::PointCloud<pcl::PointXYZRGB> cloudTmp = *cloudRGB;
-    pcl::copyPointCloud (cloudTmp, cloud);
+    pcl::copyPointCloud(cloudTmp, cloud);
 }
 
 int main(int argc, char **argv) {
 
-    const int NUMBER_OF_SCENES = 160;
+    const int NUMBER_OF_SCENES = 3;
 
-    pcl::PointCloud<pcl::PointXYZRGBA> cloudRGBA;
-    loadPlyFile(1, cloudRGBA);
+    for (int i = 1; i <= NUMBER_OF_SCENES; ++i) {
+        pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>());
+        loadPlyFile(i, *cloud);
 
-    //for (int i = 0; i < 2; ++i) {
-        //pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(&cloudRGBA);
-    //}
+        pcl::SupervoxelClustering<PointT> super = getSuperVoxelClustering(cloud);
 
-    cout<<"Test"<<endl;
-    /*pcl::SupervoxelClustering<PointT> super = getSuperVoxelClustering(cloud);
+        map<uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxel_clusters;
+        super.extract(supervoxel_clusters);
 
-    map<uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxel_clusters;
-    super.extract(supervoxel_clusters);
+        multimap<uint32_t, uint32_t> supervoxel_adjacency = getSupervoxelAdjacency(super, supervoxel_clusters);
 
-    multimap<uint32_t, uint32_t> supervoxel_adjacency = getSupervoxelAdjacency(super, supervoxel_clusters);
+        pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
+        pcl::PointCloud<pcl::PointXYZL>::Ptr lccpLabeledCloud = sv_labeled_cloud->makeShared();
+        relabelCloud(supervoxel_clusters, supervoxel_adjacency, lccpLabeledCloud);
 
-    pcl::PointCloud<pcl::PointXYZL>::Ptr sv_labeled_cloud = super.getLabeledCloud();
-    pcl::PointCloud<pcl::PointXYZL>::Ptr lccpLabeledCloud = sv_labeled_cloud->makeShared();
-    relabelCloud(supervoxel_clusters, supervoxel_adjacency, lccpLabeledCloud);
-
-
-    cloudPlaneDetector.calculatePointCloud(*lccpLabeledCloud);
-    statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
-    statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
-    statisticsModule.calculateAndPrint(false);*/
+        CloudPlaneDetector cloudPlaneDetector;
+        cloudPlaneDetector.calculatePointCloud(*lccpLabeledCloud);
+        statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
+        cout<<endl<<endl<<"Loaded scene number "<<i<<" of "<<NUMBER_OF_SCENES<<endl<<endl;
+    }
+    statisticsModule.calculateAndPrint(true);
 
     return 0;
 }
