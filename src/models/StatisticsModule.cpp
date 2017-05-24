@@ -37,6 +37,33 @@ void StatisticsModule::appendSceneVoxels(std::vector<std::vector<Eigen::Vector3f
     scenes.push_back(voxels);
 }
 
+Eigen::Vector3f StatisticsModule::getNormalFromPlaneEquation(Eigen::Vector4f &planeEquation){
+    return Vector3f(planeEquation(0), planeEquation(1), planeEquation(2));
+}
+
+bool StatisticsModule::isNotParallel(Eigen::Vector3f firstNormal, Eigen::Vector3f secondNormal){
+    firstNormal.normalize();
+    secondNormal.normalize();
+    float cosBetweenNormals = firstNormal.dot(secondNormal);
+    if(cosBetweenNormals < 0.98 && cosBetweenNormals > -0.98) return true;
+    return false;
+}
+
+bool StatisticsModule::isMoreThenTwoNonParallelPlanes(){
+    for(auto normalA : planesNormals){
+        for(auto normalB : planesNormals){
+            if(isNotParallel(normalA, normalB)){
+                for(auto normalC : planesNormals){
+                    if(isNotParallel(normalA, normalC) && isNotParallel(normalC, normalB))
+                        return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+
 void StatisticsModule::calculateAndPrint() {
 
     double areaSum = 0;
@@ -47,6 +74,7 @@ void StatisticsModule::calculateAndPrint() {
     printProgressBar();
     int sceneNumber = 0;
     for (std::vector<std::vector<Eigen::Vector3f>> voxels : scenes) {
+        planesNormals.clear();
         int voxelNo = 0;
         std::vector<std::vector<Eigen::Vector3f>> validVoxels;
         for (std::vector<Eigen::Vector3f> voxel : voxels) {
@@ -55,6 +83,7 @@ void StatisticsModule::calculateAndPrint() {
                 validVoxels.push_back(voxel);
             }
         }
+
         for (std::vector<Eigen::Vector3f> voxel : validVoxels) {
             ++voxelNo;
             pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud(new pcl::PointCloud<pcl::PointXYZ>());
@@ -65,6 +94,8 @@ void StatisticsModule::calculateAndPrint() {
             pair<double, Eigen::Vector4f> pointNormal = calculatePointNormal(voxelCloud);
 
             // TODO: Do something with "pointNormal.second" -> Eigen::Vector4f
+            Eigen::Vector3f normalVec = getNormalFromPlaneEquation(pointNormal.second);
+            planesNormals.push_back(normalVec);
 
             if (!isnan(calculatedArea) && !isnan(pointNormal.first)) {
                 areaSum += calculatedArea;
@@ -73,6 +104,7 @@ void StatisticsModule::calculateAndPrint() {
             }
             printProgressBar(voxelNo, (int) validVoxels.size(), sceneNumber, (int) scenes.size());
         }
+        if(isMoreThenTwoNonParallelPlanes()) ++numberOfScenes;
         ++sceneNumber;
     }
     planesByScene = planes / scenes.size();
@@ -88,6 +120,7 @@ void StatisticsModule::printOutput() {
     cout<<"Planes by scene with minimum number of points of "<<MINIMUM_POINTS_VALUE<<": "<<planesByScene<<endl;
     cout<<"Average area: "<<averageArea<<endl;
     cout<<"Average Curvature: "<<averageCurvature<<endl;
+    cout<<"Number of scenes with at least three non parallel planes " << numberOfScenes<<endl;
     cout<<"--------------------------------------------------------------------------"<<endl;
 }
 

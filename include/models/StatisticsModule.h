@@ -29,6 +29,11 @@ private:
     double calculateTotalArea(pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud);
     pair<double, Eigen::Vector4f> calculatePointNormal(pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud);
     void printProgressBar(const int firstCount = 0, const int firstMax = 1, const int secondCount = 0, const int secondMax = 1);
+    std::vector<Eigen::Vector3f> planesNormals;
+    Eigen::Vector3f getNormalFromPlaneEquation(Eigen::Vector4f &planeEquation);
+    bool isMoreThenTwoNonParallelPlanes();
+    bool isNotParallel(Eigen::Vector3f firstNormal, Eigen::Vector3f secondNormal);
+    int numberOfScenes = 0;
 };
 
 
