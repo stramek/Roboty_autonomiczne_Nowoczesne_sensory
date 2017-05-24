@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
 
     const int NUMBER_OF_SCENES = 3;
 
-    for (int i = 1; i <= NUMBER_OF_SCENES; ++i) {
+    for (int i = 0; i < NUMBER_OF_SCENES; ++i) {
         pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>());
         loadPlyFile(i, *cloud);
 
@@ -213,9 +213,9 @@ int main(int argc, char **argv) {
         CloudPlaneDetector cloudPlaneDetector;
         cloudPlaneDetector.calculatePointCloud(*lccpLabeledCloud);
         statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
-        cout<<endl<<endl<<"Loaded scene number "<<i<<" of "<<NUMBER_OF_SCENES<<endl<<endl;
+        cout<<endl<<endl<<"Loaded scene number "<<i + 1<<" of "<<NUMBER_OF_SCENES<<endl<<endl;
     }
-    statisticsModule.calculateAndPrint(true);
+    statisticsModule.calculateAndPrint();
 
     return 0;
 }

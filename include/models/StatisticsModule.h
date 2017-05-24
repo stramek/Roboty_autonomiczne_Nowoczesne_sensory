@@ -18,7 +18,7 @@ class StatisticsModule {
 public:
     StatisticsModule();
     void appendSceneVoxels(std::vector<std::vector<Eigen::Vector3f>> voxels);
-    void calculateAndPrint(bool calculateCurvature = true);
+    void calculateAndPrint();
 private:
     static const int MINIMUM_POINTS_VALUE = 600;
     std::vector<std::vector<std::vector<Eigen::Vector3f>>> scenes;

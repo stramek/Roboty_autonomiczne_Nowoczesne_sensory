@@ -37,7 +37,7 @@ void StatisticsModule::appendSceneVoxels(std::vector<std::vector<Eigen::Vector3f
     scenes.push_back(voxels);
 }
 
-void StatisticsModule::calculateAndPrint(bool calculateCurvature) {
+void StatisticsModule::calculateAndPrint() {
 
     double areaSum = 0;
     double curvaturesSum = 0;
