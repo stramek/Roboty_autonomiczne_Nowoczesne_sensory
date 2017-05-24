@@ -182,20 +182,33 @@ void appendToStatisticsByName(string path) {
 
 }
 
-int main(int argc, char **argv) {
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGB (new pcl::PointCloud<pcl::PointXYZRGB>);
+void loadPlyFile(int number, pcl::PointCloud<pcl::PointXYZRGBA> &cloud) {
     pcl::PLYReader Reader;
-    Reader.read("../cloud_merged.ply", *cloudRGB);
-
+    String stringNumber = to_string(number);
+    while (stringNumber.length() <= 3) stringNumber = "0" + stringNumber;
+    cout<<stringNumber<<endl;
+    string path = "../clouds/cloud" + stringNumber + ".ply";
+    cout<<path<<endl;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGB (new pcl::PointCloud<pcl::PointXYZRGB>);
+    Reader.read(path, *cloudRGB);
     pcl::PointCloud<pcl::PointXYZRGBA> cloudRGBA;
     pcl::PointCloud<pcl::PointXYZRGB> cloudTmp = *cloudRGB;
-    pcl::copyPointCloud (cloudTmp, cloudRGBA);
+    pcl::copyPointCloud (cloudTmp, cloud);
+}
+
+int main(int argc, char **argv) {
+
+    const int NUMBER_OF_SCENES = 160;
+
+    pcl::PointCloud<pcl::PointXYZRGBA> cloudRGBA;
+    loadPlyFile(1, cloudRGBA);
 
     //for (int i = 0; i < 2; ++i) {
-        pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(&cloudRGBA);
+        //pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(&cloudRGBA);
     //}
-    pcl::SupervoxelClustering<PointT> super = getSuperVoxelClustering(cloud);
+
+    cout<<"Test"<<endl;
+    /*pcl::SupervoxelClustering<PointT> super = getSuperVoxelClustering(cloud);
 
     map<uint32_t, pcl::Supervoxel<PointT>::Ptr> supervoxel_clusters;
     super.extract(supervoxel_clusters);
@@ -210,7 +223,7 @@ int main(int argc, char **argv) {
     cloudPlaneDetector.calculatePointCloud(*lccpLabeledCloud);
     statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
     statisticsModule.appendSceneVoxels(cloudPlaneDetector.getVoxels());
-    statisticsModule.calculateAndPrint(false);
+    statisticsModule.calculateAndPrint(false);*/
 
     return 0;
 }

@@ -11,9 +11,9 @@ void StatisticsModule::printProgressBar(const int firstCount, const int firstMax
     float progress = firstCount / (float) firstMax;
     float progress2 = (secondCount / (float) secondMax) + (progress / secondMax);
 
-    int barWidth = 20;
+    int barWidth = 15;
 
-    cout << "Scene progress: [";
+    cout << "Scene: [";
     int pos = barWidth * progress;
     for (int i = 0; i < barWidth; ++i) {
         if (i < pos) cout << "=";
@@ -22,7 +22,7 @@ void StatisticsModule::printProgressBar(const int firstCount, const int firstMax
     }
     cout << "] " << int(progress * 100.0) << " %  ";
 
-    cout << "Final progress: [";
+    cout << "Overall: [";
     int pos2 = barWidth * progress2;
     for (int i = 0; i < barWidth; ++i) {
         if (i < pos2) cout << "=";
